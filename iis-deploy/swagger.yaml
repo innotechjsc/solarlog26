@@ -87,6 +87,8 @@ paths:
       description: |
         Receive telemetry / interval dữ liệu từ SolarLogger; cần API key.
 
+        **API key trên Swagger UI:** nhấn nút **Authorize** (ổ khóa) ở **đầu trang** `/api-docs` → mục **ApiKeyAuth** → nhập giá trị trùng một key trong `ALLOWED_API_KEYS` trên server (header `X-API-Key`). Sau đó **Try it out** mới gửi kèm key.
+
         **Định dạng hỗ trợ:**
         - Legacy HTTP: `data.system` + tùy chọn `data.inverters`; `timestamp` Unix giây (hoặc ms nếu > 1e12).
         - Envelope IoT (api/solar_logger_payload_desc.md): `payload`, `timestamp` ISO 8601 hoặc Unix, `schema_version`, `payload_type`, `sequence`, `site_id`.
