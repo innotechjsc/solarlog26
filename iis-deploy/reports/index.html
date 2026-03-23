@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Báo Cáo Năng Lượng</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <link rel="stylesheet" href="/reports/style.css">
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Báo Cáo</h2>
+                <p class="sidebar-subtitle">Phân tích năng lượng</p>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="filter-group">
+                    <label class="filter-label">Dự án</label>
+                    <select id="project-select" class="filter-select">
+                        <option value="">Đang tải...</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Khu vực</label>
+                    <select id="area-select" class="filter-select">
+                        <option value="">Tất cả</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Khoảng thời gian</label>
+                    <div class="period-selector">
+                        <button class="period-option active" data-period="7days">
+                            <span class="period-label">7 ngày</span>
+                            <span class="period-desc">Tuần qua</span>
+                        </button>
+                        <button class="period-option" data-period="30days">
+                            <span class="period-label">30 ngày</span>
+                            <span class="period-desc">Tháng qua</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="header-content">
+                    <h1 class="page-title">Báo Cáo Năng Lượng</h1>
+                    <p class="page-description">Phân tích chi tiết và dự đoán sản lượng năng lượng mặt trời</p>
+                </div>
+                <div class="header-actions">
+                    <div class="date-range">
+                        <span class="date-label">Khoảng thời gian</span>
+                        <span id="date-range-text" class="date-value">7 ngày qua</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading-state">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Đang tải dữ liệu và tính toán...</p>
+            </div>
+
+            <!-- Report Content -->
+            <div id="report-content" style="display:none;">
+                <!-- Key Metrics -->
+                <section class="metrics-section">
+                    <div class="metrics-grid">
+                        <div class="metric-card metric-primary">
+                            <div class="metric-header">
+                                <div class="metric-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-label">Tổng Năng Lượng</div>
+                            </div>
+                            <div class="metric-value" id="total-energy">0</div>
+                            <div class="metric-unit">kWh</div>
+                            <div class="metric-trend">
+                                <span class="trend-icon">↗</span>
+                                <span class="trend-text">Tổng sản lượng</span>
+                            </div>
+                        </div>
+
+                        <div class="metric-card metric-success">
+                            <div class="metric-header">
+                                <div class="metric-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                        <polyline points="17 6 23 6 23 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="metric-label">Trung Bình/Ngày</div>
+                            </div>
+                            <div class="metric-value" id="avg-energy">0</div>
+                            <div class="metric-unit">kWh/ngày</div>
+                            <div class="metric-trend">
+                                <span class="trend-icon">→</span>
+                                <span class="trend-text">Trung bình</span>
+                            </div>
+                        </div>
+
+                        <div class="metric-card metric-warning">
+                            <div class="metric-header">
+                                <div class="metric-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-label">Cao Nhất</div>
+                            </div>
+                            <div class="metric-value" id="max-energy">0</div>
+                            <div class="metric-unit">kWh/ngày</div>
+                            <div class="metric-trend">
+                                <span class="trend-icon">↑</span>
+                                <span class="trend-text">Đỉnh cao</span>
+                            </div>
+                        </div>
+
+                        <div class="metric-card metric-info">
+                            <div class="metric-header">
+                                <div class="metric-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="metric-label">Hiệu Suất</div>
+                            </div>
+                            <div class="metric-value" id="efficiency">0</div>
+                            <div class="metric-unit">%</div>
+                            <div class="metric-trend">
+                                <span class="trend-icon">✓</span>
+                                <span class="trend-text">Hiệu quả</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Main Chart -->
+                <section class="chart-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Sản Lượng Năng Lượng và Dự Đoán</h2>
+                                <p class="card-subtitle">Dữ liệu thực tế và dự báo 7 ngày tới</p>
+                            </div>
+                            <div class="card-actions">
+                                <button class="action-btn" title="Xuất PDF">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container-large">
+                                <canvas id="energy-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Secondary Charts -->
+                <section class="charts-grid-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Mẫu Năng Lượng Theo Giờ</h2>
+                                <p class="card-subtitle">Trung bình năng lượng theo giờ trong ngày</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="hourly-pattern-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Phân Bố Năng Lượng</h2>
+                                <p class="card-subtitle">Theo khu vực hoặc thiết bị</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="distribution-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="charts-grid-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Nhu Cầu Dự Kiến</h2>
+                                <p class="card-subtitle">So sánh nhu cầu và sản lượng dự kiến</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="demand-forecast-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Phân Tích Xu Hướng</h2>
+                                <p class="card-subtitle">Xu hướng tăng/giảm và độ tin cậy</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Battery Health Section (New) -->
+                <section class="charts-grid-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Sức khỏe Pin (Battery Health)</h2>
+                                <p class="card-subtitle">Theo dõi SOH và SOC theo thời gian</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="battery-health-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Tương tác Lưới (Grid Interaction)</h2>
+                                <p class="card-subtitle">Import/Export năng lượng và tần số</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="grid-interaction-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Temperature Section (New) -->
+                <section class="charts-grid-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Nhiệt độ Thiết bị</h2>
+                                <p class="card-subtitle">Theo dõi nhiệt độ inverter và môi trường</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="temperature-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Trạng thái Inverter</h2>
+                                <p class="card-subtitle">Operating state và grid mode theo thời gian</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="inverter-state-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Insights -->
+                <section class="insights-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h2 class="card-title">Phân Tích và Khuyến Nghị</h2>
+                                <p class="card-subtitle">Những thông tin quan trọng từ dữ liệu</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="insights-content" class="insights-grid"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/reports/app.js"></script>
+</body>
+</html>

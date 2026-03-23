@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Chẩn Đoán AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        
+        .page-header p {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .device-selector {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .device-selector select {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .status-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .status-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .status-card.healthy .status-value {
+            color: #4caf50;
+        }
+        
+        .status-card.warning .status-value {
+            color: #ff9800;
+        }
+        
+        .status-card.critical .status-value {
+            color: #f44336;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .anomalies-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .anomaly-item {
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+        }
+        
+        .anomaly-item.high {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .anomaly-item.medium {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .anomaly-item.low {
+            border-left-color: #ffc107;
+            background: #fffde7;
+        }
+        
+        .anomaly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+        
+        .anomaly-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .anomaly-score {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .anomaly-score.high {
+            background: #f44336;
+            color: white;
+        }
+        
+        .anomaly-score.medium {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .anomaly-score.low {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .anomaly-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .anomaly-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .recommendations-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .recommendation-item {
+            padding: 16px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .recommendation-header {
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .recommendation-icon {
+            font-size: 24px;
+        }
+        
+        .recommendation-content {
+            flex: 1;
+        }
+        
+        .recommendation-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .recommendation-description {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .recommendation-impact {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #1976d2;
+            font-weight: 500;
+        }
+        
+        .predictions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        
+        .prediction-card {
+            background: #f9f9f9;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .prediction-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .prediction-icon {
+            font-size: 24px;
+        }
+        
+        .prediction-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .prediction-probability {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .probability-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+    
+    <div class="main-container">
+        <div class="page-header">
+            <div>
+                <h1>Chẩn Đoán AI <span class="ai-badge">🤖 AI</span></h1>
+                <p>Phân tích thông minh và chẩn đoán sự cố bằng trí tuệ nhân tạo</p>
+            </div>
+            <div class="device-selector">
+                <select id="deviceSelect">
+                    <option value="">Tất cả thiết bị</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- System Status -->
+        <div class="status-grid">
+            <div class="status-card healthy">
+                <div class="status-icon">✅</div>
+                <div class="status-label">Trạng thái hệ thống</div>
+                <div class="status-value" id="systemStatus">Bình thường</div>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-icon">🔍</div>
+                <div class="status-label">Bất thường phát hiện</div>
+                <div class="status-value" id="anomaliesCount">0</div>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-icon">💡</div>
+                <div class="status-label">Gợi ý tối ưu</div>
+                <div class="status-value" id="recommendationsCount">0</div>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-icon">🔮</div>
+                <div class="status-label">Dự đoán sự cố</div>
+                <div class="status-value" id="predictionsCount">0</div>
+            </div>
+        </div>
+        
+        <!-- Anomaly Detection -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Phát hiện bất thường</h3>
+            </div>
+            <div class="anomalies-list" id="anomaliesList">
+                <div class="loading">Đang phân tích dữ liệu...</div>
+            </div>
+        </div>
+        
+        <!-- AI Recommendations -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Gợi ý tối ưu từ AI</h3>
+            </div>
+            <div class="recommendations-list" id="recommendationsList">
+                <div class="loading">Đang tạo gợi ý...</div>
+            </div>
+        </div>
+        
+        <!-- Failure Predictions -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Dự đoán sự cố</h3>
+            </div>
+            <div class="predictions-grid" id="predictionsGrid">
+                <div class="loading">Đang phân tích xu hướng...</div>
+            </div>
+        </div>
+        
+        <!-- Performance Analysis Chart -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Phân tích hiệu suất AI</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="aiAnalysisChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/dashboard/js/ai-diagnosis.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - API Logs</title>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <link rel="stylesheet" href="/dashboard/css/logs.css">
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+    
+    <div class="main-container">
+        <div class="page-header">
+            <h1>📊 API Logs - Kiểm tra Request</h1>
+            <p>Xem toàn bộ các request đã gọi đến API, thời gian, mã lỗi/thành công</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-label">Tổng Requests</div>
+                <div class="stat-value" id="totalRequests">-</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-label">Thành công</div>
+                <div class="stat-value" id="totalSuccess">-</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-label">Lỗi Client</div>
+                <div class="stat-value" id="totalClientErrors">-</div>
+            </div>
+            <div class="stat-card server-error">
+                <div class="stat-label">Lỗi Server</div>
+                <div class="stat-value" id="totalServerErrors">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Tỷ lệ thành công</div>
+                <div class="stat-value" id="successRate">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Response time trung bình</div>
+                <div class="stat-value" id="avgResponseTime">-</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-card">
+            <h3>Bộ lọc</h3>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>HTTP Method</label>
+                    <select id="filterMethod">
+                        <option value="">Tất cả</option>
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Path/Endpoint</label>
+                    <input type="text" id="filterPath" placeholder="Ví dụ: /api/v1/data">
+                </div>
+                <div class="filter-group">
+                    <label>Status Code</label>
+                    <input type="number" id="filterStatusCode" placeholder="Ví dụ: 200, 404, 500">
+                </div>
+                <div class="filter-group">
+                    <label>Status Type</label>
+                    <select id="filterStatusType">
+                        <option value="">Tất cả</option>
+                        <option value="success">Thành công</option>
+                        <option value="client_error">Lỗi Client</option>
+                        <option value="server_error">Lỗi Server</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>IP Address</label>
+                    <input type="text" id="filterIp" placeholder="Ví dụ: 192.168.1.1">
+                </div>
+                <div class="filter-group">
+                    <label>Từ ngày</label>
+                    <input type="datetime-local" id="filterStartDate">
+                </div>
+                <div class="filter-group">
+                    <label>Đến ngày</label>
+                    <input type="datetime-local" id="filterEndDate">
+                </div>
+                <div class="filter-group">
+                    <label>Số dòng/trang</label>
+                    <select id="filterLimit">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" id="applyFilters">Áp dụng bộ lọc</button>
+                <button class="btn btn-secondary" id="clearFilters">Xóa bộ lọc</button>
+                <button class="btn btn-secondary" id="refreshLogs">🔄 Làm mới</button>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="logs-card">
+            <div class="logs-header">
+                <h3>Danh sách Logs</h3>
+                <div class="logs-info">
+                    <span id="logsInfo">Đang tải...</span>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Method</th>
+                            <th>Path</th>
+                            <th>Status</th>
+                            <th>Response Time</th>
+                            <th>IP Address</th>
+                            <th>API Key</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="8" class="loading">Đang tải dữ liệu...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination">
+                <!-- Pagination will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="logDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Chi tiết Log</h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <div class="modal-body" id="logDetailContent">
+                <!-- Log details will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/dashboard/js/logs.js"></script>
+</body>
+</html>

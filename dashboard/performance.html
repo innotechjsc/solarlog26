@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Hiệu Suất</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        
+        .page-header p {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .device-selector {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .device-selector select {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .period-selector {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .period-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .period-btn.active {
+            background: #1976d2;
+            color: white;
+            border-color: #1976d2;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .metric-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .metric-unit {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .metric-trend {
+            font-size: 12px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .trend-up {
+            color: #4caf50;
+        }
+        
+        .trend-down {
+            color: #f44336;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .device-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        
+        .device-card {
+            background: #f9f9f9;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .device-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .device-metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .device-metric:last-child {
+            border-bottom: none;
+        }
+        
+        .device-metric-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .device-metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+    
+    <div class="main-container">
+        <div class="page-header">
+            <div>
+                <h1>Hiệu Suất</h1>
+                <p>Phân tích và đánh giá hiệu suất hệ thống năng lượng mặt trời</p>
+            </div>
+            <div class="device-selector">
+                <select id="deviceSelect">
+                    <option value="">Tất cả thiết bị</option>
+                </select>
+                <div class="period-selector">
+                    <button class="period-btn active" data-period="7days">7 ngày</button>
+                    <button class="period-btn" data-period="30days">30 ngày</button>
+                    <button class="period-btn" data-period="1year">1 năm</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Tổng năng lượng</div>
+                <div class="metric-value" id="totalEnergy">0</div>
+                <div class="metric-unit">kWh</div>
+                <div class="metric-trend" id="energyTrend"></div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Công suất trung bình</div>
+                <div class="metric-value" id="avgPower">0</div>
+                <div class="metric-unit">kW</div>
+                <div class="metric-trend" id="powerTrend"></div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Công suất tối đa</div>
+                <div class="metric-value" id="maxPower">0</div>
+                <div class="metric-unit">kW</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Hiệu suất trung bình</div>
+                <div class="metric-value" id="avgEfficiency">0</div>
+                <div class="metric-unit">%</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Tỷ lệ hoạt động</div>
+                <div class="metric-value" id="availability">0</div>
+                <div class="metric-unit">%</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Năng lượng trung bình/ngày</div>
+                <div class="metric-value" id="avgDailyEnergy">0</div>
+                <div class="metric-unit">kWh</div>
+            </div>
+        </div>
+        
+        <!-- Performance Chart -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Biểu đồ hiệu suất</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Device Comparison -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>So sánh thiết bị</h3>
+            </div>
+            <div class="device-comparison" id="deviceComparison">
+                <div class="loading">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+        
+        <!-- Efficiency Trend -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Xu hướng hiệu suất</h3>
+            </div>
+            <div class="chart-container">
+                <canvas id="efficiencyChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/dashboard/js/performance.js"></script>
+</body>
+</html>

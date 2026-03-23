@@ -1,0 +1,16 @@
+# iisnode configuration file
+# This file can be used to override web.config settings
+
+loggingEnabled: true
+logDirectory: iisnode
+nodeProcessCountPerApplication: 1
+maxConcurrentRequestsPerProcess: 1024
+maxProcessCountPerApplication: 4
+node_env: production
+
+
+
+
+
+
+

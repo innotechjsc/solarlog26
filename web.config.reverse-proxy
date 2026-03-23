@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <system.webServer>
+    <!-- IIS Reverse Proxy Configuration (No iisnode needed) -->
+    <!-- This configuration uses URL Rewrite to proxy requests to Node.js running on localhost:5023 -->
+    
+    <rewrite>
+      <rules>
+        <!-- Proxy all requests to Node.js application -->
+        <rule name="ReverseProxyInboundRule" stopProcessing="true">
+          <match url="(.*)" />
+          <action type="Rewrite" url="http://localhost:5023/{R:1}" />
+          <serverVariables>
+            <set name="HTTP_X_FORWARDED_HOST" value="{HTTP_HOST}" />
+            <set name="HTTP_X_FORWARDED_PROTO" value="http" />
+            <set name="HTTP_X_FORWARDED_FOR" value="{REMOTE_ADDR}" />
+          </serverVariables>
+        </rule>
+      </rules>
+    </rewrite>
+    
+    <!-- Make sure error responses are passed through -->
+    <httpErrors existingResponse="PassThrough" />
+    
+    <!-- Security settings -->
+    <security>
+      <requestFiltering>
+        <!-- 209715200 = 200 MB - cho upload firmware OTA (.swu, .bin) -->
+        <requestLimits maxAllowedContentLength="209715200" />
+      </requestFiltering>
+    </security>
+  </system.webServer>
+</configuration>
+

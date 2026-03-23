@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Giám Sát</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <link rel="stylesheet" href="/dashboard/css/monitoring.css">
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+    
+    <div class="monitoring-container">
+        <!-- Left Sidebar - Device Tree -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Thiết Bị</h2>
+                <div class="search-box">
+                    <input type="text" id="deviceSearch" placeholder="Q Nhập tên thiết bị" />
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <div id="deviceTree" class="device-tree">
+                    <div class="loading">Đang tải...</div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Summary Cards Row -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="card-icon sun">☀️</div>
+                    <div class="card-content">
+                        <div class="card-label">Sản lượng hôm nay</div>
+                        <div class="card-value" id="productionToday">0</div>
+                        <div class="card-unit">kWh</div>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="card-icon leaf">🍃</div>
+                    <div class="card-content">
+                        <div class="card-label">Than tiêu chuẩn tiết kiệm</div>
+                        <div class="card-value" id="coalSaved">0</div>
+                        <div class="card-unit">(tấn)</div>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="card-icon sun">☀️</div>
+                    <div class="card-content">
+                        <div class="card-label">Tổng sản lượng</div>
+                        <div class="card-value" id="totalProduction">0</div>
+                        <div class="card-unit">kWh</div>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="card-icon co2">➕</div>
+                    <div class="card-content">
+                        <div class="card-label">CO2 tránh được</div>
+                        <div class="card-value" id="co2Avoided">0</div>
+                        <div class="card-unit">(tấn)</div>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="card-icon house">🏠</div>
+                    <div class="card-content">
+                        <div class="card-label">Tiêu thụ hôm nay</div>
+                        <div class="card-value" id="consumptionToday">0</div>
+                        <div class="card-unit">kWh</div>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="card-icon tree">🌳</div>
+                    <div class="card-content">
+                        <div class="card-label">Cây tương đương đã trồng</div>
+                        <div class="card-value" id="treesPlanted">0</div>
+                        <div class="card-unit">(cây)</div>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="card-icon pv">🔆</div>
+                    <div class="card-content">
+                        <div class="card-label">Tiêu thụ từ PV</div>
+                        <div class="card-value" id="consumptionFromPV">0</div>
+                        <div class="card-unit">kWh</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- New Widgets from Payload 0.9.0 -->
+            <div class="summary-cards">
+                <!-- Grid Frequency Widget -->
+                <div class="summary-card frequency-card">
+                    <div class="card-icon" style="background: #e3f2fd; color: #1976d2;">⚡</div>
+                    <div class="card-content">
+                        <div class="card-label">Tần số Lưới</div>
+                        <div class="card-value" id="gridFrequency">-</div>
+                        <div class="card-unit">Hz</div>
+                        <div class="card-subvalue" id="gridFrequencyStatus">-</div>
+                    </div>
+                </div>
+                
+                <!-- Temperature Widget -->
+                <div class="summary-card temperature-card">
+                    <div class="card-icon" style="background: #ffebee; color: #f44336;">🌡️</div>
+                    <div class="card-content">
+                        <div class="card-label">Nhiệt độ Inverter</div>
+                        <div class="card-value" id="inverterTemperature">-</div>
+                        <div class="card-unit">°C</div>
+                        <div class="card-subvalue" id="ambientTemperature">Môi trường: -</div>
+                    </div>
+                </div>
+                
+                <!-- Battery Health Widget -->
+                <div class="summary-card battery-health-card">
+                    <div class="card-icon" style="background: #e8f5e9; color: #4caf50;">🔋</div>
+                    <div class="card-content">
+                        <div class="card-label">Sức khỏe Pin (SOH)</div>
+                        <div class="card-value" id="batterySOH">-</div>
+                        <div class="card-unit">%</div>
+                        <div class="card-subvalue" id="batterySOC">SOC: -</div>
+                    </div>
+                </div>
+                
+                <!-- Operating State Widget -->
+                <div class="summary-card operating-state-card">
+                    <div class="card-icon" style="background: #fff3e0; color: #ff9800;">⚙️</div>
+                    <div class="card-content">
+                        <div class="card-label">Trạng thái Vận hành</div>
+                        <div class="card-value" id="workModeStatus">-</div>
+                        <div class="card-unit">Mode</div>
+                        <div class="card-subvalue" id="gridModeStatus">Grid: -</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Power Flow Diagram -->
+            <div class="section-card">
+                <div class="card-header">
+                    <h3>CÔNG SUẤT HIỆN TẠI</h3>
+                    <div class="card-subtitle">Cập nhật: <span id="lastUpdate">-</span></div>
+                </div>
+                <div class="card-body">
+                    <div id="powerFlowDiagram" class="power-flow-diagram">
+                        <!-- Power flow will be rendered here -->
+                    </div>
+                    <div class="grid-status">
+                        <span class="status-label"># Nối lưới</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plant Power Graph -->
+            <div class="section-card">
+                <div class="card-header">
+                    <h3>CÔNG SUẤT NHÀ MÁY</h3>
+                    <div class="card-tabs">
+                        <button class="tab-btn active" data-tab="power">Công suất</button>
+                        <button class="tab-btn" data-tab="energy">Năng lượng</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="plantPowerChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Alerts Section -->
+            <div class="section-card">
+                <div class="card-header">
+                    <h3>CẢNH BÁO (<span id="alertCount">0</span>)</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alerts-breakdown">
+                        <div class="alert-item">
+                            <span class="alert-label">Nghiêm trọng:</span>
+                            <span class="alert-value" id="alertCritical">0</span>
+                        </div>
+                        <div class="alert-item">
+                            <span class="alert-label">Lớn:</span>
+                            <span class="alert-value" id="alertMajor">0</span>
+                        </div>
+                        <div class="alert-item">
+                            <span class="alert-label">Nhỏ:</span>
+                            <span class="alert-value" id="alertMinor">0</span>
+                        </div>
+                        <div class="alert-item">
+                            <span class="alert-label">Cảnh báo:</span>
+                            <span class="alert-value" id="alertWarning">0</span>
+                        </div>
+                    </div>
+                    <div class="plant-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Địa chỉ nhà máy:</span>
+                            <span class="detail-value" id="plantAddress">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tổng công suất chuỗi:</span>
+                            <span class="detail-value" id="totalCapacity">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Ngày kết nối lưới:</span>
+                            <span class="detail-value" id="gridConnectionDate">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Energy Management Section -->
+            <div class="section-card">
+                <div class="card-header">
+                    <h3>Quản lý năng lượng</h3>
+                    <div class="card-tabs">
+                        <button class="tab-btn active" data-tab="day">Ngày</button>
+                        <button class="tab-btn" data-tab="month">Tháng</button>
+                        <button class="tab-btn" data-tab="year">Năm</button>
+                        <button class="tab-btn" data-tab="lifetime">Trọn đời</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="date-selector">
+                        <button class="date-nav" id="prevDate">‹</button>
+                        <input type="date" id="energyDate" class="date-input" />
+                        <button class="date-nav" id="nextDate">›</button>
+                    </div>
+                    <div class="energy-summary">
+                        <div class="summary-row">
+                            <span>Sản sinh từ PV:</span>
+                            <strong id="pvOutput">0.00 kWh</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Tiêu thụ (kWh):</span>
+                            <strong id="totalConsumption">0.00</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Cấp vào lưới (kWh):</span>
+                            <strong id="fedToGrid">0.00 (<span id="fedToGridPercent">0.00</span>%)</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Tiêu thụ bởi thiết bị:</span>
+                            <strong id="deviceConsumption">0.00 kWh</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Từ PV (kWh):</span>
+                            <strong id="fromPV">0.00 (<span id="fromPVPercent">0.00</span>%)</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Từ lưới (kWh):</span>
+                            <strong id="fromGrid">0.00 (<span id="fromGridPercent">0.00</span>%)</strong>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="energyManagementChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Revenue Section -->
+            <div class="section-card">
+                <div class="card-header">
+                    <h3>Doanh thu</h3>
+                    <div class="card-tabs">
+                        <button class="tab-btn active" data-tab="month">Tháng</button>
+                        <button class="tab-btn" data-tab="year">Năm</button>
+                        <button class="tab-btn" data-tab="lifetime">Trọn đời</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="date-selector">
+                        <button class="date-nav" id="prevRevenueDate">‹</button>
+                        <input type="month" id="revenueDate" class="date-input" />
+                        <button class="date-nav" id="nextRevenueDate">›</button>
+                    </div>
+                    <div class="revenue-summary">
+                        <span>Tổng doanh thu:</span>
+                        <strong id="totalRevenue">0</strong>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/dashboard/js/device-tree.js"></script>
+    <script src="/dashboard/js/power-flow.js"></script>
+    <script src="/dashboard/js/monitoring.js"></script>
+</body>
+</html>
+

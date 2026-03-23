@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Bảo Trì</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-header {
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        
+        .page-header p {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .stat-card.warning .stat-value {
+            color: #ff9800;
+        }
+        
+        .stat-card.danger .stat-value {
+            color: #f44336;
+        }
+        
+        .stat-card.success .stat-value {
+            color: #4caf50;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .maintenance-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .maintenance-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+        }
+        
+        .maintenance-item.overdue {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .maintenance-item.due-soon {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .maintenance-item.upcoming {
+            border-left-color: #2196f3;
+            background: #e3f2fd;
+        }
+        
+        .maintenance-item.completed {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+            opacity: 0.7;
+        }
+        
+        .maintenance-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-size: 20px;
+        }
+        
+        .maintenance-content {
+            flex: 1;
+        }
+        
+        .maintenance-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .maintenance-meta {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .maintenance-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1565c0;
+        }
+        
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #388e3c;
+        }
+        
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+        
+        .checklist-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        
+        .checklist-label {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .alert-item {
+            padding: 16px;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+        }
+        
+        .alert-item.critical {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .alert-item.major {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .alert-item.minor {
+            border-left-color: #ffc107;
+            background: #fffde7;
+        }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+        
+        .alert-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .alert-severity {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .alert-severity.critical {
+            background: #f44336;
+            color: white;
+        }
+        
+        .alert-severity.major {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .alert-severity.minor {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .alert-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .alert-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+    
+    <div class="main-container">
+        <div class="page-header">
+            <h1>Bảo Trì</h1>
+            <p>Quản lý lịch bảo trì và bảo dưỡng hệ thống</p>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Tổng cảnh báo</div>
+                <div class="stat-value" id="totalAlerts">0</div>
+            </div>
+            
+            <div class="stat-card warning">
+                <div class="stat-label">Bảo trì sắp đến</div>
+                <div class="stat-value" id="upcomingMaintenance">0</div>
+            </div>
+            
+            <div class="stat-card danger">
+                <div class="stat-label">Quá hạn</div>
+                <div class="stat-value" id="overdueMaintenance">0</div>
+            </div>
+            
+            <div class="stat-card success">
+                <div class="stat-label">Hoàn thành tháng này</div>
+                <div class="stat-value" id="completedThisMonth">0</div>
+            </div>
+        </div>
+        
+        <!-- Maintenance Schedule -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Lịch bảo trì</h3>
+            </div>
+            <div class="maintenance-list" id="maintenanceList">
+                <div class="loading">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+        
+        <!-- Maintenance Checklist -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Checklist bảo trì định kỳ</h3>
+            </div>
+            <div class="checklist" id="maintenanceChecklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="check1">
+                    <label class="checklist-label" for="check1">Kiểm tra và làm sạch tấm pin mặt trời</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <label class="checklist-label" for="check2">Kiểm tra kết nối dây điện và đầu nối</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <label class="checklist-label" for="check3">Kiểm tra hiệu suất inverter</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <label class="checklist-label" for="check4">Kiểm tra hệ thống giám sát và cảnh báo</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <label class="checklist-label" for="check5">Kiểm tra pin lưu trữ (nếu có)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <label class="checklist-label" for="check6">Kiểm tra hệ thống nối lưới</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check7">
+                    <label class="checklist-label" for="check7">Kiểm tra an toàn điện</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check8">
+                    <label class="checklist-label" for="check8">Ghi nhận và báo cáo kết quả</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Alerts -->
+        <div class="section-card">
+            <div class="card-header">
+                <h3>Cảnh báo cần xử lý</h3>
+            </div>
+            <div class="alerts-list" id="alertsList">
+                <div class="loading">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/dashboard/js/maintenance.js"></script>
+</body>
+</html>

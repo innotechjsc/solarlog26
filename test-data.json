@@ -1,0 +1,58 @@
+{
+  "device_id": "SL-2025-0001",
+  "timestamp": 1703761800,
+  "timezone": "Asia/Ho_Chi_Minh",
+  "version": "0.9.0",
+  "data": {
+    "system": {
+      "total_ac_power": 450.5,
+      "total_reactive_power": 120.3,
+      "avg_power_factor": 0.97,
+      "avg_frequency": 50.02,
+      "online_inverters": 8,
+      "total_inverters": 8,
+      "energy_5min": 37.54,
+      "system_state": "all_online"
+    },
+    "inverters": [
+      {
+        "id": 1,
+        "slave_address": 1,
+        "model": "SUN2000-10KTL",
+        "ac_power": 56.2,
+        "ac_voltage_l1": 230.5,
+        "ac_current_l1": 81.7,
+        "power_factor": 0.98,
+        "grid_frequency": 50.02,
+        "daily_yield": 45.3,
+        "device_state": "running",
+        "alarm_code": 0,
+        "efficiency": 97.8,
+        "internal_temp": 42.5
+      },
+      {
+        "id": 2,
+        "slave_address": 2,
+        "model": "SUN2000-10KTL",
+        "ac_power": 55.8,
+        "ac_voltage_l1": 230.3,
+        "ac_current_l1": 81.2,
+        "power_factor": 0.98,
+        "grid_frequency": 50.01,
+        "daily_yield": 44.9,
+        "device_state": "running",
+        "alarm_code": 0,
+        "efficiency": 97.5,
+        "internal_temp": 43.0
+      }
+    ]
+  },
+  "alarms": []
+}
+
+
+
+
+
+
+

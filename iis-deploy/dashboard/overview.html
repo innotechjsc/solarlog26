@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Tổng Quan</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/navbar.css">
+    <link rel="stylesheet" href="/dashboard/css/overview.css">
+</head>
+<body>
+    <!-- Navigation will be injected by navbar.js -->
+    
+    <div class="main-container">
+        <!-- Financial & Production Row -->
+        <div class="metrics-row">
+            <div class="metric-card financial">
+                <div class="metric-header">
+                    <span class="metric-label">Doanh thu hôm nay</span>
+                    <span class="info-icon">ℹ️</span>
+                </div>
+                <div class="metric-value" id="revenueToday">0</div>
+                <div class="metric-unit">VND</div>
+            </div>
+            
+            <div class="metric-card financial">
+                <div class="metric-header">
+                    <span class="metric-label">Tổng doanh thu</span>
+                    <span class="info-icon">ℹ️</span>
+                </div>
+                <div class="metric-value" id="totalRevenue">0</div>
+                <div class="metric-unit">VND</div>
+            </div>
+            
+            <div class="metric-card production">
+                <div class="metric-header">
+                    <span class="metric-label">Sản lượng hôm nay</span>
+                    <span class="info-icon">ℹ️</span>
+                </div>
+                <div class="metric-value" id="energyToday">0</div>
+                <div class="metric-unit">kWh</div>
+            </div>
+            
+            <div class="metric-card production">
+                <div class="metric-header">
+                    <span class="metric-label">Tổng sản lượng</span>
+                    <span class="info-icon">ℹ️</span>
+                </div>
+                <div class="metric-value" id="totalEnergy">0</div>
+                <div class="metric-unit">MWh</div>
+            </div>
+            
+            <div class="metric-card battery">
+                <div class="metric-header">
+                    <span class="metric-label">Năng lượng đã sạc hôm nay</span>
+                </div>
+                <div class="metric-value" id="chargeToday">0</div>
+                <div class="metric-unit">kWh</div>
+            </div>
+            
+            <div class="metric-card battery">
+                <div class="metric-header">
+                    <span class="metric-label">Năng lượng đã xả hôm nay</span>
+                </div>
+                <div class="metric-value" id="dischargeToday">0</div>
+                <div class="metric-unit">kWh</div>
+            </div>
+            
+            <!-- New widgets from payload 0.9.0 -->
+            <div class="metric-card inverter-status">
+                <div class="metric-header">
+                    <span class="metric-label">Trạng thái Inverter</span>
+                    <span class="info-icon" title="Số inverter đang online / tổng số">ℹ️</span>
+                </div>
+                <div class="metric-value" id="inverterStatus">- / -</div>
+                <div class="metric-unit">Online / Total</div>
+                <div class="metric-subvalue" id="inverterHealthPercent">-</div>
+            </div>
+            
+            <div class="metric-card battery-health">
+                <div class="metric-header">
+                    <span class="metric-label">Sức khỏe Pin (SOH)</span>
+                    <span class="info-icon" title="State of Health - Tình trạng pin">ℹ️</span>
+                </div>
+                <div class="metric-value" id="batterySOH">-</div>
+                <div class="metric-unit">%</div>
+                <div class="metric-subvalue" id="batterySOC">SOC: -</div>
+            </div>
+            
+            <div class="metric-card temperature">
+                <div class="metric-header">
+                    <span class="metric-label">Nhiệt độ Inverter</span>
+                    <span class="info-icon" title="Nhiệt độ bên trong inverter">ℹ️</span>
+                </div>
+                <div class="metric-value" id="inverterTemp">-</div>
+                <div class="metric-unit">°C</div>
+                <div class="metric-subvalue" id="ambientTemp">Môi trường: -</div>
+            </div>
+            
+            <div class="metric-card grid-frequency">
+                <div class="metric-header">
+                    <span class="metric-label">Tần số Lưới</span>
+                    <span class="info-icon" title="Tần số lưới điện (tiêu chuẩn: 50 Hz)">ℹ️</span>
+                </div>
+                <div class="metric-value" id="gridFrequency">-</div>
+                <div class="metric-unit">Hz</div>
+                <div class="metric-subvalue" id="gridFrequencyStatus">-</div>
+            </div>
+        </div>
+        
+        <!-- Status & Alerts Row -->
+        <div class="status-row">
+            <div class="status-card">
+                <h3>Tổng nhà máy</h3>
+                <div class="gauge-container">
+                    <canvas id="plantGauge"></canvas>
+                    <div class="gauge-value" id="plantCount">0</div>
+                </div>
+                <div class="gauge-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot normal"></span>
+                        <span>Bình thường: <strong id="plantNormal">0</strong></span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot error"></span>
+                        <span>Lỗi: <strong id="plantError">0</strong></span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot disconnected"></span>
+                        <span>Ngắt kết nối: <strong id="plantDisconnected">0</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Tổng cảnh báo</h3>
+                <div class="gauge-container">
+                    <canvas id="alertGauge"></canvas>
+                    <div class="gauge-value" id="alertCount">0</div>
+                </div>
+                <div class="gauge-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot critical"></span>
+                        <span>Nghiêm trọng: <strong id="alertCritical">0</strong></span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot major"></span>
+                        <span>Lớn: <strong id="alertMajor">0</strong></span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot minor"></span>
+                        <span>Nhỏ: <strong id="alertMinor">0</strong></span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot warning"></span>
+                        <span>Cảnh báo: <strong id="alertWarning">0</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Operating State Card (New) -->
+            <div class="status-card operating-state-card">
+                <h3>Trạng thái Vận hành</h3>
+                <div class="operating-state-grid" id="operatingStateGrid">
+                    <div class="loading">Đang tải...</div>
+                </div>
+            </div>
+            
+            <div class="environmental-card">
+                <h3>Tác động môi trường</h3>
+                <div class="env-item">
+                    <div class="env-icon coal">⚡</div>
+                    <div class="env-content">
+                        <div class="env-label">Than tiêu chuẩn tiết kiệm</div>
+                        <div class="env-value" id="coalSaved">0</div>
+                        <div class="env-unit">(tấn)</div>
+                    </div>
+                </div>
+                <div class="env-item">
+                    <div class="env-icon co2">➕</div>
+                    <div class="env-content">
+                        <div class="env-label">CO2 tránh được</div>
+                        <div class="env-value" id="co2Avoided">0</div>
+                        <div class="env-unit">(tấn)</div>
+                    </div>
+                </div>
+                <div class="env-item">
+                    <div class="env-icon trees">🌳</div>
+                    <div class="env-content">
+                        <div class="env-label">Tương đương cây trồng</div>
+                        <div class="env-value" id="treesEquivalent">0</div>
+                        <div class="env-unit">(cây)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Section -->
+        <div class="map-section">
+            <h3>Bản đồ nhà máy</h3>
+            <div id="mapContainer" class="map-container"></div>
+        </div>
+    </div>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Socket.IO for WebSocket -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/dashboard/js/websocket-client.js"></script>
+    <script src="/dashboard/js/navbar.js"></script>
+    <script src="/dashboard/js/map.js"></script>
+    <script src="/dashboard/js/overview.js"></script>
+</body>
+</html>
+

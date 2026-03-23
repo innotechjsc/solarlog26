@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarPower - Quản Trị</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-box h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .login-box p {
+            color: #666;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #1565c0;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .admin-container {
+            display: none;
+        }
+        
+        .admin-container.active {
+            display: block;
+        }
+        
+        .header {
+            background: white;
+            padding: 16px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .nav-menu a {
+            padding: 8px 16px;
+            text-decoration: none;
+            color: #666;
+            font-size: 14px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .nav-menu a:hover {
+            background: #f5f5f5;
+            color: #1976d2;
+        }
+        
+        .nav-menu a.active {
+            background: #e3f2fd;
+            color: #1976d2;
+            font-weight: 500;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .user-name {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .btn-logout {
+            padding: 8px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .section-card {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .btn-add {
+            padding: 8px 16px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            font-weight: 600;
+            color: #666;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+        
+        .btn-edit, .btn-delete {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        
+        .btn-edit {
+            background: #2196f3;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .device-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .selected-count {
+            margin-left: 12px;
+            color: #1976d2;
+            font-size: 14px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <h1>SolarPower Admin</h1>
+            <p>Đăng nhập để quản trị hệ thống</p>
+            <div id="loginError" class="error" style="display: none;"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Tên đăng nhập hoặc Email</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">Đăng nhập</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Admin Panel -->
+    <div class="admin-container" id="adminContainer">
+        <div class="header">
+            <div class="header-left">
+                <h1>SolarPower - Quản Trị</h1>
+                <nav class="nav-menu">
+                    <a href="/dashboard" target="_blank">📊 Dashboard</a>
+                    <a href="/reports" target="_blank">📈 Báo Cáo</a>
+                    <a href="/admin" class="active">⚙️ Quản Trị</a>
+                </nav>
+            </div>
+            <div class="user-info">
+                <span class="user-name" id="userName"></span>
+                <button class="btn-logout" onclick="logout()">Đăng xuất</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('users')">Người dùng</button>
+                <button class="tab" onclick="showTab('projects')">Dự án</button>
+                <button class="tab" onclick="showTab('areas')">Khu vực</button>
+                <button class="tab" onclick="showTab('devices')">Thiết bị</button>
+            </div>
+            
+            <!-- Users Tab -->
+            <div class="tab-content active" id="usersTab">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2>Quản lý người dùng</h2>
+                        <button class="btn-add" onclick="showUserModal()">+ Thêm người dùng</button>
+                    </div>
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Tên đăng nhập</th>
+                                <th>Họ tên</th>
+                                <th>Email</th>
+                                <th>Vai trò</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr><td colspan="6">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Projects Tab -->
+            <div class="tab-content" id="projectsTab">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2>Quản lý dự án</h2>
+                        <button class="btn-add" onclick="showProjectModal()">+ Thêm dự án</button>
+                    </div>
+                    <table id="projectsTable">
+                        <thead>
+                            <tr>
+                                <th>Tên</th>
+                                <th>Mã</th>
+                                <th>Địa chỉ</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectsTableBody">
+                            <tr><td colspan="5">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Areas Tab -->
+            <div class="tab-content" id="areasTab">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2>Quản lý khu vực</h2>
+                        <button class="btn-add" onclick="showAreaModal()">+ Thêm khu vực</button>
+                    </div>
+                    <table id="areasTable">
+                        <thead>
+                            <tr>
+                                <th>Tên</th>
+                                <th>Mã</th>
+                                <th>Dự án</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="areasTableBody">
+                            <tr><td colspan="5">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Devices Tab -->
+            <div class="tab-content" id="devicesTab">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2>Quản lý thiết bị</h2>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-add" id="addToAreaBtn" onclick="showAddToAreaModal()" style="display: none; background: #ff9800;">Thêm vào khu vực</button>
+                            <button class="btn-add" onclick="showDeviceModal()">+ Thêm thiết bị</button>
+                        </div>
+                    </div>
+                    <table id="devicesTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAllDevices" onchange="toggleSelectAllDevices()"></th>
+                                <th>Device ID</th>
+                                <th>Tên site</th>
+                                <th>Dự án</th>
+                                <th>Khu vực</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devicesTableBody">
+                            <tr><td colspan="7">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Add devices to area -->
+    <div class="modal" id="addToAreaModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Thêm thiết bị vào khu vực</h3>
+                <button class="btn-close" onclick="closeAddToAreaModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Chọn khu vực *</label>
+                <select id="areaSelectForDevices" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                    <option value="">-- Chọn khu vực --</option>
+                </select>
+            </div>
+            <div style="margin-top: 20px; padding: 12px; background: #f5f5f5; border-radius: 6px;">
+                <strong>Số thiết bị đã chọn: <span id="selectedDevicesCount">0</span></strong>
+            </div>
+            <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn" style="background: #666; width: auto; padding: 8px 16px;" onclick="closeAddToAreaModal()">Hủy</button>
+                <button class="btn" style="width: auto; padding: 8px 16px;" onclick="addSelectedDevicesToArea()">Thêm</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/admin/admin/admin.js"></script>
+</body>
+</html>

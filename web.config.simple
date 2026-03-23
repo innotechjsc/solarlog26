@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <system.webServer>
+    <!-- Simplified iisnode configuration -->
+    <!-- Remove configOverrides if causing issues -->
+    
+    <handlers>
+      <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
+    </handlers>
+    
+    <rewrite>
+      <rules>
+        <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+          <match url="^server.js\/debug[\/]?" />
+        </rule>
+        
+        <rule name="StaticContent">
+          <action type="Rewrite" url="public{REQUEST_URI}"/>
+        </rule>
+        
+        <rule name="DynamicContent">
+          <conditions>
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+          </conditions>
+          <action type="Rewrite" url="server.js"/>
+        </rule>
+      </rules>
+    </rewrite>
+    
+    <security>
+      <requestFiltering>
+        <hiddenSegments>
+          <remove segment="bin"/>
+        </hiddenSegments>
+      </requestFiltering>
+    </security>
+    
+    <httpErrors existingResponse="PassThrough" />
+    
+    <!-- Simplified iisnode configuration - removed problematic attributes -->
+    <iisnode
+      node_env="production"
+      nodeProcessCountPerApplication="1"
+      maxConcurrentRequestsPerProcess="1024"
+      loggingEnabled="true"
+      logDirectory="iisnode"
+      debuggingEnabled="false"
+    />
+  </system.webServer>
+</configuration>
+

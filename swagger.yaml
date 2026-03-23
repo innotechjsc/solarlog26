@@ -1,0 +1,1700 @@
+openapi: 3.0.3
+info:
+  title: SolarLogger Backend API
+  description: |
+    API documentation for SolarLogger monitoring system.
+    This API receives data from SolarLogger devices (ESP32-S3) and provides endpoints for monitoring, analytics, and reporting.
+    
+    **Payload Schema v0.9.0 Support**: This API now fully supports the new payload schema v0.9.0 with enhanced data structures including:
+    - Device identification (info section)
+    - Operating state and grid mode
+    - 3-phase AC measurements
+    - Grid interaction (import/export)
+    - PV input with MPPT channels
+    - Battery storage details
+    - Load monitoring
+    - Performance metrics
+    - Thermal hardware monitoring
+    - Data quality indicators
+    
+    The API maintains backward compatibility with older payload schemas.
+
+    **Schema vs IoT envelope (`api/solar_logger_payload_desc.md`):** `POST /api/v1/data` phân loại **G1–G9**
+    (telemetry uploader + slices, báo cáo, status, event, dispatch, config, OTA, sync, metering) và trả `g_category`.
+    Chế độ **IOT_ENVELOPE_STRICT** bắt buộc `site_id`, `schema_version`, `payload_type` theo §1 (trừ legacy `data.system`).
+  version: 1.1.0
+  contact:
+    name: SolarLogger Support
+servers:
+  - url: http://localhost:5023
+    description: Development server
+  - url: http://localhost:{port}
+    description: Custom port (set in .env)
+    variables:
+      port:
+        default: '5023'
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Data Ingestion
+    description: Endpoints for receiving data from SolarLogger devices
+  - name: Devices
+    description: Device management and data retrieval
+  - name: Analytics
+    description: Analytics and reporting endpoints
+  - name: Authentication
+    description: JWT login and profile (dashboard / admin)
+  - name: OTA
+    description: Firmware releases and device OTA metadata
+  - name: Dashboard
+    description: Aggregated dashboard endpoints
+  - name: Logs
+    description: API request logs
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the API server is running
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2025-12-31T10:00:00.000Z'
+                  uptime:
+                    type: number
+                    example: 3600.5
+
+  /api/v1/data:
+    post:
+      tags:
+        - Data Ingestion
+      summary: Upload data from SolarLogger device
+      description: |
+        Receive telemetry / interval dữ liệu từ SolarLogger; cần API key.
+
+        **Định dạng hỗ trợ:**
+        - Legacy HTTP: `data.system` + tùy chọn `data.inverters`; `timestamp` Unix giây (hoặc ms nếu > 1e12).
+        - Envelope IoT (api/solar_logger_payload_desc.md): `payload`, `timestamp` ISO 8601 hoặc Unix, `schema_version`, `payload_type`, `sequence`, `site_id`.
+        - Gói telemetry/inverter phẳng trong `payload`: tự suy `data.system` + `inverters[0]`.
+
+        **MQTT:** cùng JSON có thể publish lên `<MQTT_TELEMETRY_ROOT>/<site_id>/<device_id>/telemetry/<kind>` khi `MQTT_TELEMETRY_INGEST_ENABLED=true`.
+
+        **Phản hồi:** `g_category` = `G1`…`G9` — nhóm đã xử lý (khớp mục lục tài liệu `api/solar_logger_payload_desc.md`).
+      operationId: uploadData
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+            examples:
+              exampleOldSchema:
+                summary: Old schema example (backward compatible)
+                value:
+                  device_id: SL-2025-0001
+                  timestamp: 1703761800
+                  timezone: Asia/Ho_Chi_Minh
+                  version: '0.8.0'
+                  data:
+                    system:
+                      total_ac_power: 450.5
+                      total_reactive_power: 120.3
+                      avg_power_factor: 0.97
+                      avg_frequency: 50.02
+                      online_inverters: 8
+                      total_inverters: 8
+                      energy_5min: 37.54
+                      system_state: all_online
+                    inverters:
+                      - id: 1
+                        slave_address: 1
+                        model: SUN2000-10KTL
+                        ac_power: 56.2
+                        ac_voltage_l1: 230.5
+                        ac_current_l1: 81.7
+                        power_factor: 0.98
+                        grid_frequency: 50.02
+                        daily_yield: 45.3
+                        device_state: running
+                        alarm_code: 0
+                        efficiency: 97.8
+                        internal_temp: 42.5
+                  alarms: []
+              exampleV09:
+                summary: New schema v0.9.0 example
+                value:
+                  logger_id: SL-2025-0001
+                  timestamp: 1703761800
+                  timezone: Asia/Ho_Chi_Minh
+                  fw_version: '0.9.0'
+                  schema_version: '0.9.0'
+                  data:
+                    system:
+                      total_ac_active_power_w: 450500
+                      online_inverters: 1
+                      total_inverters: 1
+                    inverters:
+                      - info:
+                          modbus_address: 1
+                          serial_number: SN1234567890
+                          model_name: GW10K-ET
+                          inverter_type: hybrid_3_phase
+                          rated_power_w: 10000
+                          hw_version: H1.2
+                          protocol: modbus_rtu
+                        operating_state:
+                          work_mode: normal
+                          grid_mode: on_grid
+                        sign_convention:
+                          grid_exchange_active_power: positive_import
+                          battery_dc_active_power: positive_charge
+                        ac_measurements:
+                          voltage_l1n_v: 230.5
+                          voltage_l2n_v: 231.1
+                          voltage_l3n_v: 229.9
+                          current_l1_a: 4.12
+                          current_l2_a: 4.05
+                          current_l3_a: 4.2
+                          inverter_ac_bus_active_power_w: 2850
+                          inverter_ac_reactive_power_var: 120
+                          inverter_ac_apparent_power_va: 2900
+                          inverter_ac_bus_active_power_l1_w: 930
+                          inverter_ac_bus_active_power_l2_w: 920
+                          inverter_ac_bus_active_power_l3_w: 1000
+                        grid_interaction:
+                          exchange_active_power_w: 500
+                          import_active_power_w: 500
+                          export_active_power_w: 0
+                          import_energy_today_kwh: 1.2
+                          import_energy_total_kwh: 356.4
+                          export_energy_today_kwh: 0.0
+                          export_energy_total_kwh: 1205.8
+                          zero_export_enabled: false
+                          export_power_limit_w: 0
+                          frequency_hz: 49.98
+                        pv_input:
+                          dc_bus_voltage_v: 380.5
+                          pv_inputs:
+                            - mppt: 1
+                              voltage_v: 360.2
+                              current_a: 4.5
+                              dc_power_w: 1621
+                            - mppt: 2
+                              voltage_v: 355.8
+                              current_a: 4.7
+                              dc_power_w: 1679
+                        battery_storage:
+                          mode: charge
+                          active_power_w: 640
+                          voltage_v: 51.8
+                          current_a: 12.4
+                          soc_percent: 78
+                          soh_percent: 96
+                          energy_charge_today_kwh: 1.5
+                          energy_discharge_today_kwh: 0.6
+                          charge_limit_w: 3000
+                          discharge_limit_w: 3000
+                        load:
+                          active_power_w: 2350
+                        performance:
+                          inverter_efficiency_percent: 97.8
+                        alarm:
+                          count: 2
+                          data:
+                            - type: warning
+                              code: 102
+                              text: Grid phase wrong
+                              first_seen_ts: 1703761600
+                              last_seen_ts: 1703761800
+                            - type: error
+                              code: 2051
+                              text: DC/DC Softstart Fault
+                              first_seen_ts: 1703761500
+                              last_seen_ts: 1703761800
+                        thermal_hardware:
+                          inverter_temp_c: 42.3
+                          heatsink_temp_c: 48.7
+                          transformer_temp_c: null
+                          ambient_temp_c: 33.1
+                        quality:
+                          source: modbus
+                          device_online: true
+                          poll_interval_ms: 1000
+              exampleIotEnvelope:
+                summary: IoT envelope + payload telemetry/inverter (ISO timestamp)
+                value:
+                  device_id: solar-logger-test
+                  site_id: site-hcm-001
+                  timestamp: '2026-03-18T09:22:54.000Z'
+                  timezone: Asia/Ho_Chi_Minh
+                  schema_version: '1.0.0'
+                  payload_type: telemetry
+                  sequence: 1
+                  payload:
+                    inverter_types: String Inverter
+                    rated_power_w: 5000
+                    total_ac_output_power_active: 1157.4
+                    cumulative_production_active: 812.9
+                    daily_production_active: 13
+                    energy_yesterday_kwh: 0
+                    warning_code: 0
+                    error_code: 0
+                    inverter_temperature_c: 41.7
+                    inverter_status: Normal
+      responses:
+        '200':
+          description: Data received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/alarms:
+    post:
+      tags:
+        - Data Ingestion
+      summary: Send alarm notification
+      description: |
+        Receive alarm notification from SolarLogger device.
+        Used for CRITICAL and MAJOR alarms that need immediate notification.
+      operationId: sendAlarm
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlarmNotificationRequest'
+            examples:
+              criticalAlarm:
+                summary: Critical alarm example
+                value:
+                  device_id: SL-2025-0001
+                  timestamp: 1703761800
+                  alarm:
+                    alarm_code: 2003
+                    severity: CRITICAL
+                    description: Inverter #1 grid frequency fault
+                    inverter_id: 1
+                    start_time: 1703761800
+                    current_value: 51.5
+                    threshold: 51.0
+      responses:
+        '200':
+          description: Alarm received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+
+  /api/v1/devices:
+    get:
+      tags:
+        - Devices
+      summary: Get list of all devices
+      description: Retrieve a list of all registered SolarLogger devices
+      operationId: getDevices
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  count:
+                    type: integer
+                    example: 5
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+
+  /api/v1/data/devices:
+    get:
+      tags:
+        - Devices
+      summary: Get list of devices from data points
+      description: |
+        Retrieve a list of all unique devices that have sent data points.
+        This endpoint combines data from the data_points collection with device information
+        from the devices collection, providing comprehensive device information including
+        latest data timestamp, schema version, and device status.
+      operationId: getDevicesFromData
+      responses:
+        '200':
+          description: List of devices with data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  count:
+                    type: integer
+                    example: 5
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeviceFromData'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/devices/{deviceId}/realtime:
+    get:
+      tags:
+        - Devices
+      summary: Get realtime data for a device
+      description: Get the latest data point for a specific device
+      operationId: getRealtimeData
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SL-2025-0001
+      responses:
+        '200':
+          description: Realtime data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/DataPoint'
+        '404':
+          description: Device not found
+
+  /api/v1/devices/{deviceId}/history:
+    get:
+      tags:
+        - Devices
+      summary: Get historical data
+      description: Get historical data for a device within a time range
+      operationId: getHistory
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SL-2025-0001
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Start timestamp (Unix timestamp)
+          example: 1703700000
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: End timestamp (Unix timestamp)
+          example: 1703761800
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [5min, 1hour, 1day]
+            default: 5min
+          description: Data interval
+      responses:
+        '200':
+          description: Historical data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  interval:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DataPoint'
+
+  /api/v1/devices/{deviceId}/summary/hourly:
+    get:
+      tags:
+        - Devices
+      summary: Get hourly summaries
+      description: Get hourly aggregated data for a device
+      operationId: getHourlySummary
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: integer
+          description: Start timestamp (optional)
+        - name: end
+          in: query
+          schema:
+            type: integer
+          description: End timestamp (optional)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 168
+          description: Maximum number of records (default: 168 = 7 days)
+      responses:
+        '200':
+          description: Hourly summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  summaries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HourlySummary'
+
+  /api/v1/devices/{deviceId}/summary/daily:
+    get:
+      tags:
+        - Devices
+      summary: Get daily summaries
+      description: Get daily aggregated data for a device
+      operationId: getDailySummary
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: integer
+        - name: end
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 365
+          description: Maximum number of records (default: 365 = 1 year)
+      responses:
+        '200':
+          description: Daily summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  summaries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DailySummary'
+
+  /api/v1/devices/{deviceId}/alarms:
+    get:
+      tags:
+        - Devices
+      summary: Get alarms for a device
+      description: Get alarm history for a specific device
+      operationId: getAlarms
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, RESOLVED, ACKNOWLEDGED]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [CRITICAL, MAJOR, MINOR, WARNING]
+        - name: start
+          in: query
+          schema:
+            type: integer
+        - name: end
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: List of alarms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  alarms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alarm'
+
+  /api/v1/analytics/performance:
+    get:
+      tags:
+        - Analytics
+      summary: Get performance analytics
+      description: Calculate performance metrics for a device over a time period
+      operationId: getPerformance
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Performance analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  analytics:
+                    $ref: '#/components/schemas/PerformanceAnalytics'
+
+  /api/v1/analytics/energy:
+    get:
+      tags:
+        - Analytics
+      summary: Get energy production analytics
+      description: Analyze energy production over time
+      operationId: getEnergyAnalytics
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7days, 30days, 1year]
+            default: 7days
+      responses:
+        '200':
+          description: Energy analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  analytics:
+                    $ref: '#/components/schemas/EnergyAnalytics'
+
+  /api/v1/analytics/alarms:
+    get:
+      tags:
+        - Analytics
+      summary: Get alarm statistics
+      description: Get statistics about alarms for a device
+      operationId: getAlarmStatistics
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: integer
+        - name: end
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alarm statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  statistics:
+                    $ref: '#/components/schemas/AlarmStatistics'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login (JWT)
+      operationId: authLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: Username hoặc email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    type: object
+        '401':
+          description: Invalid credentials
+
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Current user
+      operationId: authMe
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+
+  /api/v1/ota/latest:
+    get:
+      tags:
+        - OTA
+      summary: Latest firmware release (thiết bị poll)
+      operationId: otaLatest
+      responses:
+        '200':
+          description: Release metadata or null
+
+  /api/v1/dashboard/overview:
+    get:
+      tags:
+        - Dashboard
+      summary: Tổng hợp overview dashboard
+      operationId: dashboardOverview
+      responses:
+        '200':
+          description: Aggregated overview
+
+  /api/v1/logs:
+    get:
+      tags:
+        - Logs
+      summary: API logs (pagination, filter)
+      operationId: listApiLogs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: path
+          in: query
+          schema:
+            type: string
+        - name: method
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated logs
+
+  /api/v1/devices/{deviceId}/ota-status:
+    get:
+      tags:
+        - Devices
+      summary: Trạng thái OTA gần nhất (MQTT progress/result)
+      operationId: getDeviceOtaStatus
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ota_status từ thiết bị
+        '404':
+          description: Device not found
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key for authentication
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT từ POST /api/v1/auth/login
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+          example: Data received
+        server_time:
+          type: integer
+          example: 1703761801
+        g_category:
+          type: string
+          description: Nhóm G1–G9 (api/solar_logger_payload_desc.md) sau khi ingest
+          example: G1
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        code:
+          type: string
+          example: INVALID_API_KEY
+        message:
+          type: string
+          example: API key is invalid or expired
+        errors:
+          type: array
+          items:
+            type: object
+
+    Device:
+      type: object
+      properties:
+        _id:
+          type: string
+        device_id:
+          type: string
+          example: SL-2025-0001
+        site_name:
+          type: string
+          example: Factory ABC
+        location:
+          type: string
+          example: Ho Chi Minh City
+        timezone:
+          type: string
+          example: Asia/Ho_Chi_Minh
+        version:
+          type: string
+          example: '0.9.0'
+        total_inverters:
+          type: integer
+          example: 8
+        status:
+          type: string
+          enum: [online, offline]
+        last_seen:
+          type: string
+          format: date-time
+        device_info:
+          $ref: '#/components/schemas/DeviceInfo'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DeviceInfo:
+      type: object
+      description: Device information from payload v0.9.0 info section
+      properties:
+        serial_number:
+          type: string
+          example: SN1234567890
+        model_name:
+          type: string
+          example: GW10K-ET
+        inverter_type:
+          type: string
+          example: hybrid_3_phase
+        rated_power_w:
+          type: integer
+          example: 10000
+        hw_version:
+          type: string
+          example: H1.2
+        protocol:
+          type: string
+          example: modbus_rtu
+        modbus_address:
+          type: integer
+          example: 1
+
+    DeviceFromData:
+      type: object
+      description: Device information from data points endpoint
+      properties:
+        device_id:
+          type: string
+          example: SL-2025-0001
+        site_name:
+          type: string
+          example: Factory ABC
+        location:
+          type: string
+          example: Ho Chi Minh City
+        area_id:
+          type: string
+          nullable: true
+        area_name:
+          type: string
+          nullable: true
+        project_id:
+          type: string
+          nullable: true
+        project_name:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [online, offline]
+          example: online
+        last_seen:
+          type: string
+          format: date-time
+          nullable: true
+        last_data_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: string
+          example: '0.9.0'
+        schema_version:
+          type: string
+          example: '0.9.0'
+
+    SystemData:
+      type: object
+      description: System data (old schema)
+      properties:
+        total_ac_power:
+          type: number
+          example: 450.5
+        total_reactive_power:
+          type: number
+          example: 120.3
+        avg_power_factor:
+          type: number
+          example: 0.97
+        avg_frequency:
+          type: number
+          example: 50.02
+        online_inverters:
+          type: integer
+          example: 8
+        total_inverters:
+          type: integer
+          example: 8
+        energy_5min:
+          type: number
+          example: 37.54
+        system_state:
+          type: string
+          example: all_online
+
+    SystemDataV09:
+      type: object
+      description: System data (schema v0.9.0+)
+      properties:
+        total_ac_active_power_w:
+          type: integer
+          description: Total AC active power in Watts
+          example: 450500
+        online_inverters:
+          type: integer
+          description: Number of online inverters
+          example: 1
+        total_inverters:
+          type: integer
+          description: Total number of inverters
+          example: 1
+
+    InverterData:
+      type: object
+      description: Inverter data (old schema)
+      properties:
+        id:
+          type: integer
+          example: 1
+        slave_address:
+          type: integer
+          example: 1
+        model:
+          type: string
+          example: SUN2000-10KTL
+        ac_power:
+          type: number
+          example: 56.2
+        ac_voltage_l1:
+          type: number
+          example: 230.5
+        ac_current_l1:
+          type: number
+          example: 81.7
+        power_factor:
+          type: number
+          example: 0.98
+        grid_frequency:
+          type: number
+          example: 50.02
+        daily_yield:
+          type: number
+          example: 45.3
+        device_state:
+          type: string
+          example: running
+        alarm_code:
+          type: integer
+          example: 0
+        efficiency:
+          type: number
+          example: 97.8
+        internal_temp:
+          type: number
+          example: 42.5
+
+    InverterDataV09:
+      type: object
+      description: Inverter data (schema v0.9.0+) with all new sections
+      properties:
+        info:
+          $ref: '#/components/schemas/InverterInfo'
+        operating_state:
+          $ref: '#/components/schemas/OperatingState'
+        sign_convention:
+          $ref: '#/components/schemas/SignConvention'
+        ac_measurements:
+          $ref: '#/components/schemas/ACMeasurements'
+        grid_interaction:
+          $ref: '#/components/schemas/GridInteraction'
+        pv_input:
+          $ref: '#/components/schemas/PVInput'
+        battery_storage:
+          $ref: '#/components/schemas/BatteryStorage'
+        load:
+          $ref: '#/components/schemas/Load'
+        performance:
+          $ref: '#/components/schemas/Performance'
+        alarm:
+          $ref: '#/components/schemas/AlarmV09'
+        thermal_hardware:
+          $ref: '#/components/schemas/ThermalHardware'
+        quality:
+          $ref: '#/components/schemas/Quality'
+
+    InverterInfo:
+      type: object
+      description: Inverter identification information
+      properties:
+        modbus_address:
+          type: integer
+          example: 1
+        serial_number:
+          type: string
+          example: SN1234567890
+        model_name:
+          type: string
+          example: GW10K-ET
+        inverter_type:
+          type: string
+          example: hybrid_3_phase
+        rated_power_w:
+          type: integer
+          example: 10000
+        hw_version:
+          type: string
+          example: H1.2
+        protocol:
+          type: string
+          example: modbus_rtu
+
+    OperatingState:
+      type: object
+      description: Operating state of the inverter
+      properties:
+        work_mode:
+          type: string
+          enum: [normal, standby, fault]
+          example: normal
+        grid_mode:
+          type: string
+          enum: [on_grid, off_grid]
+          example: on_grid
+
+    SignConvention:
+      type: object
+      description: Sign convention for power values
+      properties:
+        grid_exchange_active_power:
+          type: string
+          example: positive_import
+        battery_dc_active_power:
+          type: string
+          example: positive_charge
+
+    ACMeasurements:
+      type: object
+      description: 3-phase AC measurements
+      properties:
+        voltage_l1n_v:
+          type: number
+          example: 230.5
+        voltage_l2n_v:
+          type: number
+          example: 231.1
+        voltage_l3n_v:
+          type: number
+          example: 229.9
+        current_l1_a:
+          type: number
+          example: 4.12
+        current_l2_a:
+          type: number
+          example: 4.05
+        current_l3_a:
+          type: number
+          example: 4.2
+        inverter_ac_bus_active_power_w:
+          type: integer
+          example: 2850
+        inverter_ac_reactive_power_var:
+          type: integer
+          example: 120
+        inverter_ac_apparent_power_va:
+          type: integer
+          example: 2900
+        inverter_ac_bus_active_power_l1_w:
+          type: integer
+          example: 930
+        inverter_ac_bus_active_power_l2_w:
+          type: integer
+          example: 920
+        inverter_ac_bus_active_power_l3_w:
+          type: integer
+          example: 1000
+
+    GridInteraction:
+      type: object
+      description: Grid interaction data
+      properties:
+        exchange_active_power_w:
+          type: integer
+          example: 500
+        import_active_power_w:
+          type: integer
+          example: 500
+        export_active_power_w:
+          type: integer
+          example: 0
+        import_energy_today_kwh:
+          type: number
+          example: 1.2
+        import_energy_total_kwh:
+          type: number
+          example: 356.4
+        export_energy_today_kwh:
+          type: number
+          example: 0.0
+        export_energy_total_kwh:
+          type: number
+          example: 1205.8
+        zero_export_enabled:
+          type: boolean
+          example: false
+        export_power_limit_w:
+          type: integer
+          example: 0
+        frequency_hz:
+          type: number
+          example: 49.98
+
+    PVInput:
+      type: object
+      description: PV input data with MPPT channels
+      properties:
+        dc_bus_voltage_v:
+          type: number
+          example: 380.5
+        pv_inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/PVInputItem'
+
+    PVInputItem:
+      type: object
+      description: Individual MPPT channel data
+      properties:
+        mppt:
+          type: integer
+          example: 1
+        voltage_v:
+          type: number
+          example: 360.2
+        current_a:
+          type: number
+          example: 4.5
+        dc_power_w:
+          type: integer
+          example: 1621
+
+    BatteryStorage:
+      type: object
+      description: Battery storage data
+      properties:
+        mode:
+          type: string
+          enum: [charge, discharge, idle]
+          example: charge
+        active_power_w:
+          type: integer
+          example: 640
+        voltage_v:
+          type: number
+          example: 51.8
+        current_a:
+          type: number
+          example: 12.4
+        soc_percent:
+          type: integer
+          description: State of Charge percentage
+          example: 78
+        soh_percent:
+          type: integer
+          description: State of Health percentage
+          example: 96
+        energy_charge_today_kwh:
+          type: number
+          example: 1.5
+        energy_discharge_today_kwh:
+          type: number
+          example: 0.6
+        charge_limit_w:
+          type: integer
+          example: 3000
+        discharge_limit_w:
+          type: integer
+          example: 3000
+
+    Load:
+      type: object
+      description: Load consumption data
+      properties:
+        active_power_w:
+          type: integer
+          example: 2350
+
+    Performance:
+      type: object
+      description: Inverter performance metrics
+      properties:
+        inverter_efficiency_percent:
+          type: number
+          example: 97.8
+
+    AlarmV09:
+      type: object
+      description: Alarm data (schema v0.9.0+)
+      properties:
+        count:
+          type: integer
+          example: 2
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlarmDataV09'
+
+    AlarmDataV09:
+      type: object
+      description: Individual alarm data (schema v0.9.0+)
+      properties:
+        type:
+          type: string
+          enum: [warning, error]
+          example: warning
+        code:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Alarm code (can be string or integer)
+          example: 102
+        text:
+          type: string
+          example: Grid phase wrong
+        first_seen_ts:
+          type: integer
+          description: Unix timestamp when alarm was first seen
+          example: 1703761600
+        last_seen_ts:
+          type: integer
+          description: Unix timestamp when alarm was last seen
+          example: 1703761800
+
+    ThermalHardware:
+      type: object
+      description: Thermal hardware monitoring data
+      properties:
+        inverter_temp_c:
+          type: number
+          example: 42.3
+        heatsink_temp_c:
+          type: number
+          example: 48.7
+        transformer_temp_c:
+          type: number
+          nullable: true
+          example: null
+        ambient_temp_c:
+          type: number
+          example: 33.1
+
+    Quality:
+      type: object
+      description: Data quality indicators
+      properties:
+        source:
+          type: string
+          enum: [modbus, iec104, cache]
+          example: modbus
+        device_online:
+          type: boolean
+          example: true
+        poll_interval_ms:
+          type: integer
+          example: 1000
+
+    DataUploadRequest:
+      type: object
+      required:
+        - timestamp
+        - data
+      description: |
+        Data upload request. Supports both old and new schema formats.
+        - Old schema: Use `device_id` and `version`
+        - New schema (v0.9.0+): Use `logger_id`, `fw_version`, and `schema_version`
+      properties:
+        device_id:
+          type: string
+          description: Device ID (old schema, optional if logger_id is provided)
+          example: SL-2025-0001
+        logger_id:
+          type: string
+          description: Logger ID (new schema v0.9.0+, optional if device_id is provided)
+          example: SL-2025-0001
+        timestamp:
+          type: integer
+          description: Unix timestamp
+          example: 1703761800
+        timezone:
+          type: string
+          example: Asia/Ho_Chi_Minh
+        version:
+          type: string
+          description: Firmware version (old schema, optional if fw_version is provided)
+          example: '0.9.0'
+        fw_version:
+          type: string
+          description: Firmware version (new schema v0.9.0+)
+          example: '0.9.0'
+        schema_version:
+          type: string
+          description: Payload schema version (new schema v0.9.0+)
+          example: '0.9.0'
+        site_id:
+          type: string
+          description: ID site (envelope IoT §1); lưu trên Device và DataPoint
+          example: site-hcm-001
+        sequence:
+          type: integer
+          description: Số thứ tự message (phát hiện gap / replay)
+        payload_type:
+          type: string
+          description: telemetry, control, ack, event, config, heartbeat (khớp envelope MQTT nếu có)
+          example: telemetry
+        payload:
+          type: object
+          description: |
+            Nội dung IoT envelope (api/solar_logger_payload_desc.md). Có thể là telemetry/inverter phẳng,
+            hoặc `{ "data": { "system", "inverters" } }` giống data_uploader, hoặc `{ "system", "inverters" }`.
+        data:
+          type: object
+          required:
+            - system
+          properties:
+            system:
+              oneOf:
+                - $ref: '#/components/schemas/SystemData'
+                - $ref: '#/components/schemas/SystemDataV09'
+            inverters:
+              type: array
+              items:
+                oneOf:
+                  - $ref: '#/components/schemas/InverterData'
+                  - $ref: '#/components/schemas/InverterDataV09'
+        alarms:
+          type: array
+          description: Alarms (old schema, optional if alarms are in inverters[].alarm.data[])
+          items:
+            $ref: '#/components/schemas/AlarmData'
+
+    AlarmData:
+      type: object
+      properties:
+        alarm_code:
+          type: integer
+          example: 1001
+        severity:
+          type: string
+          enum: [CRITICAL, MAJOR, MINOR, WARNING]
+        description:
+          type: string
+        start_time:
+          type: integer
+        status:
+          type: string
+          enum: [ACTIVE, RESOLVED, ACKNOWLEDGED]
+
+    AlarmNotificationRequest:
+      type: object
+      required:
+        - device_id
+        - alarm
+      properties:
+        device_id:
+          type: string
+        timestamp:
+          type: integer
+        alarm:
+          type: object
+          required:
+            - alarm_code
+            - severity
+          properties:
+            alarm_code:
+              type: integer
+            severity:
+              type: string
+              enum: [CRITICAL, MAJOR, MINOR, WARNING]
+            description:
+              type: string
+            inverter_id:
+              type: integer
+            start_time:
+              type: integer
+            current_value:
+              type: number
+            threshold:
+              type: number
+
+    DataPoint:
+      type: object
+      properties:
+        _id:
+          type: string
+        device_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        version:
+          type: string
+        system:
+          $ref: '#/components/schemas/SystemData'
+        inverters:
+          type: array
+          items:
+            $ref: '#/components/schemas/InverterData'
+        created_at:
+          type: string
+          format: date-time
+
+    HourlySummary:
+      type: object
+      properties:
+        _id:
+          type: string
+        device_id:
+          type: string
+        hour:
+          type: string
+          format: date-time
+        total_energy:
+          type: number
+        max_power:
+          type: number
+        min_power:
+          type: number
+        avg_power:
+          type: number
+        avg_power_factor:
+          type: number
+        avg_frequency:
+          type: number
+        online_inverters:
+          type: integer
+        inverter_summaries:
+          type: array
+          items:
+            type: object
+
+    DailySummary:
+      type: object
+      properties:
+        _id:
+          type: string
+        device_id:
+          type: string
+        date:
+          type: string
+          format: date-time
+        total_energy:
+          type: number
+        max_power:
+          type: number
+        min_power:
+          type: number
+        avg_power:
+          type: number
+        peak_hour:
+          type: integer
+        sunshine_hours:
+          type: number
+        inverter_summaries:
+          type: array
+          items:
+            type: object
+
+    Alarm:
+      type: object
+      properties:
+        _id:
+          type: string
+        device_id:
+          type: string
+        alarm_code:
+          type: integer
+        severity:
+          type: string
+          enum: [CRITICAL, MAJOR, MINOR, WARNING]
+        description:
+          type: string
+        inverter_id:
+          type: integer
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [ACTIVE, RESOLVED, ACKNOWLEDGED]
+        current_value:
+          type: number
+        threshold:
+          type: number
+
+    PerformanceAnalytics:
+      type: object
+      properties:
+        total_energy:
+          type: number
+        avg_power:
+          type: number
+        max_power:
+          type: number
+        min_power:
+          type: number
+        efficiency:
+          type: number
+        availability:
+          type: number
+        period:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+            hours:
+              type: integer
+
+    EnergyAnalytics:
+      type: object
+      properties:
+        period:
+          type: string
+        total_energy:
+          type: number
+        avg_daily_energy:
+          type: number
+        max_daily_energy:
+          type: number
+        trend:
+          type: number
+        daily_data:
+          type: array
+          items:
+            type: object
+
+    AlarmStatistics:
+      type: object
+      properties:
+        total:
+          type: integer
+        by_severity:
+          type: object
+          properties:
+            CRITICAL:
+              type: integer
+            MAJOR:
+              type: integer
+            MINOR:
+              type: integer
+            WARNING:
+              type: integer
+        by_status:
+          type: object
+          properties:
+            ACTIVE:
+              type: integer
+            RESOLVED:
+              type: integer
+            ACKNOWLEDGED:
+              type: integer
+        by_code:
+          type: object
+
+
+
+
+
+
+
