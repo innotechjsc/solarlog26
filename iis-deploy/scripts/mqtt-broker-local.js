@@ -7,7 +7,8 @@
  * Xác thực (tùy chọn): đặt MQTT_USERNAME và MQTT_PASSWORD trong env để bật auth.
  * Nếu đặt cả hai, broker yêu cầu client kết nối với username/password tương ứng.
  */
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const net = require('net');
 const http = require('http');
 const MQTT_USERNAME = process.env.MQTT_USERNAME || '';
