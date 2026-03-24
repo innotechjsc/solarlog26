@@ -28,6 +28,15 @@ async function ingestDataPoint(params) {
   const timestamp = timestampUnixSec;
   const isNewSchema = schema_version && parseFloat(schema_version) >= 0.9;
 
+  /** G1 dedup — solar_logger_iot_api.md §7.6: (device_id, sequence) */
+  if (typeof sequence === 'number' && !Number.isNaN(sequence)) {
+    const existing = await DataPoint.findOne({ device_id, sequence }).select('timestamp');
+    if (existing) {
+      console.log(`[ingest] dedup G1 ${device_id} sequence=${sequence}`);
+      return { server_time: Math.floor(Date.now() / 1000), duplicate: true, timestamp: existing.timestamp };
+    }
+  }
+
   await Device.updateDeviceStatus(device_id, true);
 
   if (site_id) {

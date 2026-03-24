@@ -12,6 +12,17 @@ function payloadObj(body) {
 }
 
 function detectGCategory(body, topicMeta = {}) {
+  /** solar_logger_iot_api.md — ưu tiên topic HTTP/MQTT đã gắn nhãn (tránh G7/G5 lẫn payload). */
+  const vk = topicMeta.vpp_ingest_kind;
+  if (vk === 'report') return 'G2';
+  if (vk === 'status') return 'G3';
+  if (vk === 'alarm') return 'G4';
+  if (vk === 'dispatch_response') return 'G5';
+  if (vk === 'config_ack') return 'G6';
+  if (vk === 'ota_progress' || vk === 'ota_result') return 'G7';
+  if (vk === 'sync_data') return 'G8';
+  if (vk === 'metering') return 'G9';
+
   const pl = payloadObj(body);
   if (!pl) return 'G1';
   const pt = body?.payload_type ?? pl?.payload_type;

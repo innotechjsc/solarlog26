@@ -85,6 +85,19 @@ async function processIotIngest(body, topicMeta = {}) {
     }
 
     case 'G4': {
+      const message_id =
+        (body.message_id && String(body.message_id).trim()) ||
+        (pl.message_id && String(pl.message_id).trim()) ||
+        '';
+      if (message_id) {
+        const exists = await IotAlarmEvent.findOne({
+          device_id: v.device_id,
+          message_id
+        }).select('_id');
+        if (exists) {
+          return { ok: true, result: { server_time, g_category: 'G4', deduplicated: true } };
+        }
+      }
       await IotAlarmEvent.create({
         device_id: v.device_id,
         site_id: v.site_id,
@@ -93,6 +106,7 @@ async function processIotIngest(body, topicMeta = {}) {
         event_type: pl.event_type,
         severity: pl.severity,
         event_code: pl.event_code,
+        message_id: message_id || undefined,
         payload: pl
       });
       return { ok: true, result: { server_time, g_category: 'G4' } };
@@ -100,6 +114,16 @@ async function processIotIngest(body, topicMeta = {}) {
 
     case 'G5': {
       const dispatchDirection = pl.action ? 'command' : 'response';
+      if (dispatchDirection === 'response' && pl.command_id) {
+        const exists = await IotDispatchMessage.findOne({
+          device_id: v.device_id,
+          command_id: pl.command_id,
+          direction: 'response'
+        }).select('_id');
+        if (exists) {
+          return { ok: true, result: { server_time, g_category: 'G5', deduplicated: true } };
+        }
+      }
       await IotDispatchMessage.create({
         device_id: v.device_id,
         site_id: v.site_id,
@@ -124,7 +148,11 @@ async function processIotIngest(body, topicMeta = {}) {
     }
 
     case 'G7': {
-      if (pl.stage) {
+      if (topicMeta.vpp_ingest_kind === 'ota_result') {
+        await mqttOtaService.persistOtaResult(v.device_id, pl);
+      } else if (topicMeta.vpp_ingest_kind === 'ota_progress') {
+        await mqttOtaService.persistOtaProgress(v.device_id, pl);
+      } else if (pl.stage) {
         await mqttOtaService.persistOtaProgress(v.device_id, pl);
       } else {
         await mqttOtaService.persistOtaResult(v.device_id, pl);
@@ -133,6 +161,16 @@ async function processIotIngest(body, topicMeta = {}) {
     }
 
     case 'G8': {
+      if (pl.batch_id != null && pl.batch_index != null) {
+        const exists = await IotSyncBatch.findOne({
+          device_id: v.device_id,
+          batch_id: pl.batch_id,
+          batch_index: pl.batch_index
+        }).select('_id');
+        if (exists) {
+          return { ok: true, result: { server_time, g_category: 'G8', deduplicated: true } };
+        }
+      }
       await IotSyncBatch.create({
         device_id: v.device_id,
         site_id: v.site_id,

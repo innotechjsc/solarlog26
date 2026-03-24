@@ -10,13 +10,12 @@
  */
 const crypto = require('crypto');
 const Device = require('../models/Device');
+const { buildMqttClientOptions } = require('./mqttClientOptions');
 
 let mqttClient = null;
 const MQTT_TOPIC = process.env.MQTT_OTA_TOPIC || 'ota/release';
 const MQTT_OTA_TOPIC_PREFIX = process.env.MQTT_OTA_TOPIC_PREFIX || 'ota/cm4';
 const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
-const MQTT_USERNAME = process.env.MQTT_USERNAME || '';
-const MQTT_PASSWORD = process.env.MQTT_PASSWORD || '';
 const MQTT_OTA_SUBSCRIBE_STATUS = !['0', 'false', 'no'].includes(
   String(process.env.MQTT_OTA_SUBSCRIBE_STATUS || '').toLowerCase()
 );
@@ -30,15 +29,11 @@ function getClient() {
   if (mqttClient && mqttClient.connected) return mqttClient;
   try {
     const mqtt = require('mqtt');
-    const opts = {
+    const opts = buildMqttClientOptions({
       reconnectPeriod: 5000,
       connectTimeout: 10000,
       keepalive: 60
-    };
-    if (MQTT_USERNAME) {
-      opts.username = MQTT_USERNAME;
-      opts.password = MQTT_PASSWORD;
-    }
+    }, MQTT_BROKER_URL);
     mqttClient = mqtt.connect(MQTT_BROKER_URL, opts);
     mqttClient.on('error', (err) => console.error('[MQTT OTA] Client error:', err.message));
     mqttClient.on('close', () => {});

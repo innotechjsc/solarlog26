@@ -16,8 +16,10 @@ function envValueByCanonicalName(name) {
   return '';
 }
 
+const fs = require('fs');
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -46,6 +48,7 @@ const notificationRoutes = require('./routes/notifications');
 const dashboardRoutes = require('./routes/dashboard');
 const logsRoutes = require('./routes/logs');
 const otaRoutes = require('./routes/ota');
+const d2cRoutes = require('./routes/d2c');
 
 const app = express();
 // For IIS/iisnode, use process.env.PORT, otherwise default to 5023
@@ -150,8 +153,10 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  // Skip rate limiting for localhost
+  // Skip rate limiting for localhost; D2C có rate limit riêng trong routes/d2c.js
   skip: (req) => {
+    const url = String(req.originalUrl || req.url || '').split('?')[0];
+    if (url.includes('/v1/d2c')) return true;
     return req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
   }
 });
@@ -197,6 +202,7 @@ app.use('/api', notificationRoutes);
 app.use('/api', dashboardRoutes); // Dashboard aggregation route
 app.use('/api', logsRoutes); // API logs route
 app.use('/api', otaRoutes); // OTA releases (latest, by version, upload, publish MQTT)
+app.use('/api', d2cRoutes); // HTTP D2C — Bearer device_token, /api/v1/d2c/* (solar_logger_iot_api.md §4.1)
 
 // 404 handler
 app.use((req, res) => {
@@ -222,20 +228,41 @@ mongoose.connect(MONGODB_URI)
 .then(() => {
   console.log('Connected to MongoDB');
   
-  // Create HTTP server
-  const server = http.createServer(app);
-  
+  const sslKey =
+    envValueByCanonicalName('SSL_KEY_FILE') || envValueByCanonicalName('HTTPS_KEY_FILE');
+  const sslCert =
+    envValueByCanonicalName('SSL_CERT_FILE') || envValueByCanonicalName('HTTPS_CERT_FILE');
+  let server;
+  if (sslKey && sslCert) {
+    try {
+      server = https.createServer(
+        {
+          key: fs.readFileSync(sslKey),
+          cert: fs.readFileSync(sslCert)
+        },
+        app
+      );
+      console.log('HTTPS: listening with SSL_KEY_FILE / SSL_CERT_FILE');
+    } catch (e) {
+      console.error('HTTPS: failed to read cert/key, falling back to HTTP:', e.message);
+      server = http.createServer(app);
+    }
+  } else {
+    server = http.createServer(app);
+  }
+
   // Initialize WebSocket
   websocketService.initialize(server);
 
   // MQTT: subscribe OTA progress/result (Device.ota_status); no-op if broker/mqtt unavailable
   mqttOtaService.subscribeOtaStatusTopics();
-  // MQTT telemetry ingest (G1) — bật bằng MQTT_TELEMETRY_INGEST_ENABLED=true
+  // MQTT ingest Logger→Cloud (G1–G9 topics) — MQTT_TELEMETRY_INGEST_ENABLED=true
   mqttTelemetryIngestService.subscribeTelemetryTopics();
-  
+
   // Start server
   server.listen(PORT, () => {
-    console.log(`SolarLogger Backend API server running on port ${PORT}`);
+    const proto = server instanceof https.Server ? 'https' : 'http';
+    console.log(`SolarLogger Backend API server running on ${proto}://0.0.0.0:${PORT}`);
     console.log(`WebSocket server initialized`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`MongoDB: ${MONGODB_URI.replace(/:[^:@]+@/, ':****@')}`);

@@ -22,7 +22,10 @@ info:
     **Schema vs IoT envelope (`api/solar_logger_payload_desc.md`):** `POST /api/v1/data` phân loại **G1–G9**
     (telemetry uploader + slices, báo cáo, status, event, dispatch, config, OTA, sync, metering) và trả `g_category`.
     Chế độ **IOT_ENVELOPE_STRICT** bắt buộc `site_id`, `schema_version`, `payload_type` theo §1 (trừ legacy `data.system`).
-  version: 1.1.0
+
+    **HTTP D2C (HTTPS khuyến nghị):** `POST /api/v1/d2c/...` — fallback khi MQTT không dùng được; cùng envelope/payload như MQTT;
+    header `Authorization: Bearer` với token trong `D2C_BEARER_TOKENS` hoặc `ALLOWED_API_KEYS`; phản hồi `202` + `{ success, message_id, error }`.
+  version: 1.2.0
   contact:
     name: SolarLogger Support
 servers:
@@ -51,6 +54,10 @@ tags:
     description: Aggregated dashboard endpoints
   - name: Logs
     description: API request logs
+  - name: D2C
+    description: |
+      Device-to-cloud HTTP fallback (MQTT envelope + payload). Base `https://{host}/api/v1/d2c`.
+      Mã HTTP: 202 Accepted, 400, 401, 429.
 
 paths:
   /health:
@@ -322,6 +329,247 @@ paths:
           description: Validation error
         '401':
           description: Unauthorized
+
+  /api/v1/d2c/telemetry/{slice}:
+    post:
+      tags:
+        - D2C
+      summary: D2C telemetry slice (grid, bess, pv, meter, weather, power_quality)
+      description: |
+        Cùng JSON như publish MQTT `.../telemetry/<slice>`. Bearer device token (xem **D2cDeviceBearer** — Authorize).
+      operationId: d2cTelemetrySlice
+      security:
+        - D2cDeviceBearer: []
+      parameters:
+        - name: slice
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [grid, bess, pv, meter, weather, power_quality]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limited
+
+  /api/v1/d2c/telemetry/inverter/{inv_id}:
+    post:
+      tags:
+        - D2C
+      summary: D2C telemetry inverter
+      description: |
+        Cùng payload telemetry inverter như MQTT; `inv_id` trên URL được gộp vào `payload.inv_id` nếu chưa có.
+      operationId: d2cTelemetryInverter
+      security:
+        - D2cDeviceBearer: []
+      parameters:
+        - name: inv_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limited
+
+  /api/v1/d2c/report:
+    post:
+      tags: [D2C]
+      summary: D2C G2 report
+      operationId: d2cReport
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
+
+  /api/v1/d2c/status:
+    post:
+      tags: [D2C]
+      summary: D2C G3 status
+      operationId: d2cStatus
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
+
+  /api/v1/d2c/alarm:
+    post:
+      tags: [D2C]
+      summary: D2C G4 alarm / event
+      operationId: d2cAlarm
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
+
+  /api/v1/d2c/dispatch/response:
+    post:
+      tags: [D2C]
+      summary: D2C G5 dispatch response
+      operationId: d2cDispatchResponse
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
+
+  /api/v1/d2c/config/ack:
+    post:
+      tags: [D2C]
+      summary: D2C G6 config ack
+      operationId: d2cConfigAck
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
+
+  /api/v1/d2c/metering:
+    post:
+      tags: [D2C]
+      summary: D2C G9 metering
+      operationId: d2cMetering
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
+
+  /api/v1/d2c/batch:
+    post:
+      tags: [D2C]
+      summary: D2C offline sync batch (G8)
+      operationId: d2cBatch
+      security:
+        - D2cDeviceBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataUploadRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/D2cAcceptedResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '429': { description: Rate limited }
 
   /api/v1/devices:
     get:
@@ -845,8 +1093,28 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT từ POST /api/v1/auth/login
+    D2cDeviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: device_token
+      description: |
+        Token trùng một giá trị trong `D2C_BEARER_TOKENS` (ưu tiên) hoặc `ALLOWED_API_KEYS` khi `D2C_BEARER_TOKENS` trống.
 
   schemas:
+    D2cAcceptedResponse:
+      type: object
+      required: [success, message_id]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message_id:
+          type: string
+          format: uuid
+        error:
+          nullable: true
+          type: object
+
     SuccessResponse:
       type: object
       properties:
