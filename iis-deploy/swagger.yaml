@@ -23,9 +23,11 @@ info:
     (telemetry uploader + slices, báo cáo, status, event, dispatch, config, OTA, sync, metering) và trả `g_category`.
     Chế độ **IOT_ENVELOPE_STRICT** bắt buộc `site_id`, `schema_version`, `payload_type` theo §1 (trừ legacy `data.system`).
 
-    **HTTP D2C (HTTPS khuyến nghị):** `POST /api/v1/d2c/...` — fallback khi MQTT không dùng được; cùng envelope/payload như MQTT;
-    header `Authorization: Bearer` với token trong `D2C_BEARER_TOKENS` hoặc `ALLOWED_API_KEYS`; phản hồi `202` + `{ success, message_id, error }`.
-  version: 1.2.0
+    **HTTP D2C (HTTPS khuyến nghị):** `POST /api/v1/d2c/...` — fallback khi MQTT không dùng được; **body = envelope §2.1** (`api/solar_logger_iot_api.md`): `device_id`, `site_id`, `timestamp`, `schema_version`, `payload_type`, `sequence`, `payload` — **không** dùng legacy `data.system` như `POST /api/v1/data`.
+    Header `Authorization: Bearer` với token trong `D2C_BEARER_TOKENS` hoặc `ALLOWED_API_KEYS`; phản hồi `202` + `{ success, message_id, error }`.
+
+    **OpenAPI:** request body D2C dùng schema **`IotEnvelopeIngestRequest`** (không phải `DataUploadRequest` dành cho upload legacy + envelope lẫn lộn).
+  version: 1.2.1
   contact:
     name: SolarLogger Support
 servers:
@@ -336,7 +338,11 @@ paths:
         - D2C
       summary: D2C telemetry slice (grid, bess, pv, meter, weather, power_quality)
       description: |
-        Cùng JSON như publish MQTT `.../telemetry/<slice>`. Bearer device token (xem **D2cDeviceBearer** — Authorize).
+        Cùng JSON như publish MQTT G1 telemetry:
+        - `vpp/{site_id}/telemetry/<slice>`
+        - `<MQTT_TELEMETRY_ROOT>/{site_id}/{device_id}/telemetry/<slice>` (mặc định `MQTT_TELEMETRY_ROOT=solar`, legacy)
+
+        Bearer device token (xem **D2cDeviceBearer** — Authorize). `payload` = field phẳng theo slice (`api/solar_logger_payload_desc.md` §3).
       operationId: d2cTelemetrySlice
       security:
         - D2cDeviceBearer: []
@@ -352,7 +358,48 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
+            examples:
+              telemetryPv:
+                summary: G1 envelope — slice pv
+                value:
+                  device_id: logger-SN2024001234
+                  site_id: site-hcm-001
+                  timestamp: '2026-03-25T10:30:00.000Z'
+                  schema_version: '1.0.0'
+                  payload_type: telemetry
+                  sequence: 12345
+                  payload:
+                    pv_day_energy_kwh: 18.6
+                    cumulative_production_active: 4520.0
+                    daily_production_active: 22.3
+                    pv1_voltage_v: 380.5
+                    pv1_current_a: 6.21
+                    pv1_power_w: 2362.0
+                    pv2_voltage_v: 382.1
+                    pv2_current_a: 6.4
+                    pv2_power_w: 2445.0
+                    pv3_voltage_v: 380.5
+                    pv3_current_a: 6.21
+                    pv3_power_w: 2362.0
+                    pv4_voltage_v: 382.1
+                    pv4_current_a: 6.4
+                    pv4_power_w: 2445.0
+              telemetryWeather:
+                summary: G1 envelope — slice weather
+                value:
+                  device_id: logger-SN2024001234
+                  site_id: site-hcm-001
+                  timestamp: '2026-03-25T10:30:00.000Z'
+                  schema_version: '1.0.0'
+                  payload_type: telemetry
+                  sequence: 12346
+                  payload:
+                    ghi_wm2: 850.0
+                    t_module_c: 45.2
+                    t_ambient_c: 32.1
+                    wind_speed_ms: 3.5
+                    humidity_pct: 65.0
       responses:
         '202':
           description: Accepted
@@ -388,7 +435,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -415,7 +462,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -439,7 +486,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -463,7 +510,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -487,7 +534,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -511,7 +558,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -535,7 +582,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -559,7 +606,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DataUploadRequest'
+              $ref: '#/components/schemas/IotEnvelopeIngestRequest'
       responses:
         '202':
           description: Accepted
@@ -744,7 +791,7 @@ paths:
           schema:
             type: integer
             default: 168
-          description: Maximum number of records (default: 168 = 7 days)
+          description: 'Maximum number of records (default: 168 = 7 days)'
       responses:
         '200':
           description: Hourly summaries
@@ -788,7 +835,7 @@ paths:
           schema:
             type: integer
             default: 365
-          description: Maximum number of records (default: 365 = 1 year)
+          description: 'Maximum number of records (default: 365 = 1 year)'
       responses:
         '200':
           description: Daily summaries
@@ -1114,6 +1161,55 @@ components:
         error:
           nullable: true
           type: object
+
+    IotEnvelopeIngestRequest:
+      type: object
+      description: |
+        Envelope ingest MQTT / HTTP D2C — `api/solar_logger_iot_api.md` §2.1 + `api/solar_logger_payload_desc.md` §1.
+        Pipeline: `processIotIngest` (`iotEnvelopeParse`). **Không** yêu cầu `data.system` (legacy `POST /api/v1/data`).
+        Khi `IOT_ENVELOPE_STRICT=true`: bắt buộc `site_id`, `schema_version`, `payload_type` (trừ body legacy có `data.system`).
+      required:
+        - timestamp
+      properties:
+        device_id:
+          type: string
+          description: ID logger/thiết bị (hoặc dùng `logger_id`)
+          example: logger-SN2024001234
+        logger_id:
+          type: string
+          description: Tương đương `device_id` nếu không gửi `device_id`
+        site_id:
+          type: string
+          example: site-hcm-001
+        timestamp:
+          description: ISO 8601 UTC, Unix giây, hoặc Unix ms (xem `iotTimestamp`)
+          oneOf:
+            - type: string
+              format: date-time
+              example: '2026-03-25T10:30:00.000Z'
+            - type: integer
+              example: 1711360200
+            - type: number
+              example: 1711360200.0
+        timezone:
+          type: string
+          description: Tùy chọn (một số client gửi kèm)
+          example: Asia/Ho_Chi_Minh
+        schema_version:
+          type: string
+          example: '1.0.0'
+        payload_type:
+          type: string
+          description: telemetry, report, event, … (theo nhóm G1–G9)
+          example: telemetry
+        sequence:
+          type: integer
+          description: Số thứ tự message (phát hiện gap)
+        payload:
+          type: object
+          additionalProperties: true
+          description: |
+            Nội dung nghiệp vụ phẳng hoặc lồng — tùy G1–G9. G1 telemetry slice: field theo `telemetry/<slice>`.
 
     SuccessResponse:
       type: object
@@ -1662,7 +1758,9 @@ components:
         - timestamp
         - data
       description: |
-        Data upload request. Supports both old and new schema formats.
+        **Chủ yếu cho `POST /api/v1/data`** (legacy `data.system` và/hoặc schema v0.9 trong `data`).
+        Envelope IoT-only (không có `data`) và mọi **`POST /api/v1/d2c/*`**: dùng **`IotEnvelopeIngestRequest`**.
+
         - Old schema: Use `device_id` and `version`
         - New schema (v0.9.0+): Use `logger_id`, `fw_version`, and `schema_version`
       properties:

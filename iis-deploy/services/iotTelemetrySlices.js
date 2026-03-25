@@ -44,7 +44,15 @@ function detectSliceKindFromPayload(pl) {
   if (pl.battery_mode != null || pl.battery_soc_percent != null || pl.battery_active_power_w != null) return 'bess';
   if (pl.pv_day_energy_kwh != null || pl.pv1_voltage_v != null || pl.pv1_power_w != null) return 'pv';
   if (pl.meter_serial != null && (pl.export_total_kwh != null || pl.import_total_kwh != null)) return 'meter';
-  if (pl.ghi_wm2 != null || pl.t_module_c != null || pl.wind_speed_ms != null) return 'weather';
+  if (
+    pl.ghi_wm2 != null ||
+    pl.t_module_c != null ||
+    pl.t_ambient_c != null ||
+    pl.wind_speed_ms != null ||
+    pl.humidity_pct != null
+  ) {
+    return 'weather';
+  }
   if (pl.thd_voltage_pct != null || pl.thd_current_pct != null || pl.voltage_unbalance_pct != null) {
     return 'power_quality';
   }
